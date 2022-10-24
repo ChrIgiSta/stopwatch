@@ -32,6 +32,7 @@ const (
 	ATTRIBUTE_LAST_TIME    = "last_time"
 	SUBTYPE_ACTIONS        = api.SUBTYPE_OUTPUT
 	SUBTYPE_VALUES         = api.SUBTYPE_INPUT
+	SUBTYPE_LASTTIME       = api.SUBTYPE_INFO
 	RX_BUFFER              = 20000
 	WEBSOCKET_ENDPOINT     = "/data-listener"
 )
@@ -61,7 +62,7 @@ func UpdateLastTime(assetId int32, newTime float64) error {
 
 	data := api.Data{
 		AssetId: assetId,
-		Subtype: SUBTYPE_VALUES,
+		Subtype: SUBTYPE_LASTTIME,
 		// Timestamp:     *api.NewNullableTime(nil),
 		Data: dataData,
 	}
@@ -76,6 +77,7 @@ func ListenHeapEvents(ir <-chan bool, rxApiData chan<- api.Data) {
 	var (
 		rx chan []byte
 	)
+	defer close(rxApiData)
 
 	rx = make(chan []byte, RX_BUFFER)
 
@@ -93,5 +95,5 @@ func ListenHeapEvents(ir <-chan bool, rxApiData chan<- api.Data) {
 			log.Warn(MODULE, "cannot unmarshal ws data", err)
 		}
 	}
-	log.Warn(MODULE, "rx channel from ws closed")
+	log.Warn(MODULE, "rx channel from ws closed. exiting event listener...")
 }

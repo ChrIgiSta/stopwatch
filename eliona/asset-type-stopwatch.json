@@ -14,7 +14,7 @@
 		{
 			"enable": true,
 			"name": "last_time",
-			"subtype": "input",
+			"subtype": "info",
 			"translation": {
 				"de": "Letzte Zeit",
 				"en": "Last Time"

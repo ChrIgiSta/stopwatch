@@ -16,11 +16,15 @@
 package main
 
 import (
+	"context"
 	"net/http"
+	"os"
+	"os/signal"
 	"stopwatch/apiserver"
 	"stopwatch/apiservices"
 	"stopwatch/eliona"
 	"stopwatch/stopwtch"
+	"syscall"
 	"time"
 
 	api "github.com/eliona-smart-building-assistant/go-eliona-api-client/v2"
@@ -37,6 +41,8 @@ var (
 	stopwatches []api.Asset
 	ir          chan bool
 	swMng       stopwtch.StopwatchManager
+	apiServer   *http.Server
+	osIr        bool
 )
 
 func actualizeStopwatches() {
@@ -47,6 +53,8 @@ func actualizeStopwatches() {
 }
 
 func setupApp() {
+	osIr = false
+
 	log.Info(MODULE, "setup application")
 
 	var (
@@ -62,6 +70,25 @@ func setupApp() {
 
 	go eliona.ListenHeapEvents(ir, apiData)
 	go stopwatchEventCatcher(apiData)
+	go catchAndExitOnOsSig()
+}
+
+func catchAndExitOnOsSig() {
+	osSig := make(chan os.Signal, 1)
+	signal.Notify(osSig,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+
+	<-osSig
+	osIr = true
+	log.Info("app", "Os Signal catched, exiting...")
+	ir <- true
+	swMng.StopAll()
+	log.Info("app", "all stopwatches stopped")
+	apiServer.Shutdown(context.Background())
+	log.Info("app", "api server stopped")
 }
 
 // start / stop stopwatches
@@ -115,8 +142,18 @@ func getStopwatchByAssetId(assetId int32) *api.Asset {
 // listenApiRequests starts an API server and listen for API requests
 // The API endpoints are defined in the openapi.yaml file
 func listenApiRequests() {
-	err := http.ListenAndServe(":"+common.Getenv("API_SERVER_PORT", "3000"), apiserver.NewRouter(
-		apiserver.NewUtilsApiController(apiservices.NewUtilsApiService()),
-	))
-	log.Fatal(MODULE, "Error in API Server: %v", err)
+	apiServer = &http.Server{
+		Addr: ":" + common.Getenv("API_SERVER_PORT", "3000"),
+		Handler: apiserver.NewRouter(
+			apiserver.NewUtilsApiController(apiservices.NewUtilsApiService()),
+		),
+	}
+
+	err := apiServer.ListenAndServe()
+
+	if !osIr {
+		log.Fatal(MODULE, "Error in API Server: %v", err)
+	} else {
+		log.Info(MODULE, "Api Server stopped todue an os interrupt")
+	}
 }

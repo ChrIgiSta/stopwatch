@@ -15,9 +15,6 @@ To start and initialize an app in an Eliona environment, the app have to registe
 
 ### Environment variables
 
-<mark>Todo: Describe further environment variables tables the app needs for configuration</mark>
-
-
 - `APPNAME`: must be set to `stopwatch`. Some resources use this name to identify the app inside an Eliona environment.
 
 - `CONNECTION_STRING`: configures the [Eliona database](https://github.com/eliona-smart-building-assistant/go-eliona/tree/main/db). Otherwise, the app can't be initialized and started. (e.g. `postgres://user:pass@localhost:5432/iot`)
